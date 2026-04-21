@@ -1,0 +1,64 @@
+services:
+  submitter-input-init:
+    image: alpine:3.20
+    entrypoint:
+      - /bin/sh
+      - -lc
+    command:
+      - >-
+        rm -rf /data-volume/* /data-volume/.[!.]* /data-volume/..?* 2>/dev/null || true;
+        cp -a /host-data/. /data-volume/
+    volumes:
+      - type: bind
+        source: ${SUBMITTER_DATA_DIR:-./data/serialized_data}
+        target: /host-data
+        read_only: true
+      - type: volume
+        source: submitter-input
+        target: /data-volume
+    network_mode: none
+    restart: "no"
+
+  submitter:
+    image: ${SUBMITTER_IMAGE:-leo02n/jmr-wc}
+    entrypoint:
+      - /bin/sh
+      - -lc
+    command:
+      - >-
+        output_path="/outputs/${SUBMITTER_RESULT_FILE:-wordcount-result.ser}";
+        mkdir -p "$$(dirname "$$output_path")" &&
+        exec java
+        -Dlog4j.configurationFile=file:/opt/jmr/config/submitter-log4j2.xml
+        -Dlog4j2.statusLoggerLevel=WARN
+        -cp /opt/jmr/my-mapreduce-job.jar
+        com.example.MyWcJob
+        /data
+        /opt/jmr/my-mapreduce-job.jar
+        "${SUBMITTER_MASTER_HOST:-jmr-master}"
+        "${SUBMITTER_MASTER_PORT:-50050}"
+        "${SUBMITTER_CLIENT_ID:-submitter}"
+        "$$output_path"
+    depends_on:
+      submitter-input-init:
+        condition: service_completed_successfully
+    volumes:
+      - type: volume
+        source: submitter-input
+        target: /data
+        read_only: true
+      - type: bind
+        source: ${SUBMITTER_OUTPUT_DIR:-./docker-output}
+        target: /outputs
+    networks:
+      - jmr
+    mem_limit: ${SUBMITTER_MEMORY_LIMIT:-2g}
+    restart: "no"
+
+networks:
+  jmr:
+    external: true
+    name: ${JMR_NETWORK_NAME:-jmr-network}
+
+volumes:
+  submitter-input:

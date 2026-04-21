@@ -1,0 +1,94 @@
+services:
+  worker-a:
+    container_name: jmr-worker-a
+    image: leo02n/jmr-worker
+    command:
+      - --workerId
+      - worker-a
+      - --port
+      - "50051"
+      - --storageDirectory
+      - /var/lib/jmr
+    volumes:
+      - worker-a-storage:/var/lib/jmr
+    ports:
+      - "50051:50051"
+      - "51051:51051"
+    networks:
+      - jmr
+    restart: unless-stopped
+
+  worker-b:
+    container_name: jmr-worker-b
+    image: leo02n/jmr-worker
+    command:
+      - --workerId
+      - worker-b
+      - --port
+      - "50052"
+      - --storageDirectory
+      - /var/lib/jmr
+    volumes:
+      - worker-b-storage:/var/lib/jmr
+    ports:
+      - "50052:50052"
+      - "51052:51052"
+    networks:
+      - jmr
+    restart: unless-stopped
+
+  worker-c:
+    container_name: jmr-worker-c
+    image: leo02n/jmr-worker
+    command:
+      - --workerId
+      - worker-c
+      - --port
+      - "50053"
+      - --storageDirectory
+      - /var/lib/jmr
+    volumes:
+      - worker-c-storage:/var/lib/jmr
+    ports:
+      - "50053:50053"
+      - "51053:51053"
+    networks:
+      - jmr
+    restart: unless-stopped
+
+  master:
+    container_name: jmr-master
+    image: leo02n/jmr-master
+    command:
+      - --port
+      - "50050"
+      - --storageDirectory
+      - /var/lib/jmr
+      - --worker
+      - worker-a:worker-a:50051
+      - --worker
+      - worker-b:worker-b:50052
+      - --worker
+      - worker-c:worker-c:50053
+    depends_on:
+      - worker-a
+      - worker-b
+      - worker-c
+    volumes:
+      - master-storage:/var/lib/jmr
+    ports:
+      - "50050:50050"
+      - "51050:51050"
+    networks:
+      - jmr
+    restart: unless-stopped
+
+networks:
+  jmr:
+    name: jmr-network
+
+volumes:
+  master-storage:
+  worker-a-storage:
+  worker-b-storage:
+  worker-c-storage:
